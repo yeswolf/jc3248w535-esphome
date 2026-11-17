@@ -1,0 +1,299 @@
+substitutions:
+  # Hostname / device name and the name shown in Home Assistant.
+  name: guition-jc3248w535
+  friendly_name: Guition JC3248W535 3.5in IPS
+  # Bump this together with the manifest version when publishing a new build.
+  fw_version: "1.0.19"
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  project:
+    name: "jc3248w535.media"
+    version: "${fw_version}"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    version: 5.5.6
+    advanced:
+      # The decoder and the frame rotation need the performance build.
+      compiler_optimization: PERF
+      # TinyUSB owns the USB PHY; the USB Serial/JTAG secondary console must
+      # not claim it.
+      disable_usb_serial_jtag_secondary: true
+    sdkconfig_options:
+      CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240: "y"
+      CONFIG_ESPTOOLPY_FLASHMODE_QIO: "y"
+      CONFIG_ESPTOOLPY_FLASHFREQ_80M: "y"
+
+      # TinyUSB owns the USB PHY for the mass-storage device. Keep the console
+      # on UART0 only; USB Serial/JTAG must not claim the same pins.
+      CONFIG_ESP_CONSOLE_SECONDARY_NONE: "y"
+      CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG: "n"
+
+      # FAT with long UTF-8 names, so Cyrillic file names work.
+      CONFIG_FATFS_LFN_HEAP: "y"
+      CONFIG_FATFS_MAX_LFN: "255"
+      CONFIG_FATFS_API_ENCODING_UTF_8: "y"
+
+      # SD card exposed as a USB drive.
+      CONFIG_TINYUSB_MSC_ENABLED: "y"
+      CONFIG_TINYUSB_MSC_BUFSIZE: "8192"
+      CONFIG_TINYUSB_MSC_MOUNT_PATH: '"/sdcard"'
+
+      # Formatting and large directory scans are long CPU/I/O calls.
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0: "n"
+      CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1: "n"
+
+      # Runtime power management is deliberately off: changing the CPU
+      # frequency limits at runtime left the device hung after wake from the
+      # sleep switch. Sleep now stops playback and the backlight, which is the
+      # main consumer, while Wi-Fi and the API stay up for the wake switch.
+      CONFIG_PM_ENABLE: "n"
+      CONFIG_FREERTOS_USE_TICKLESS_IDLE: "n"
+
+      # The API and the upload/log HTTP server run alongside mDNS and DHCP;
+      # 16 sockets leave room for a browser polling the log page.
+      CONFIG_LWIP_MAX_SOCKETS: "16"
+
+      # Per-task run-time counters for the CPU load sensor. The default
+      # ESP timer is the counter source.
+      CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS: "y"
+
+      # Match the native build: malloc may use PSRAM (the JPEG decoder and
+      # the browser allocate most of their buffers there), while small
+      # allocations and DMA-capable buffers stay in internal RAM.
+      CONFIG_SPIRAM_USE_MALLOC: "y"
+      CONFIG_SPIRAM_USE_CAPS_ALLOC: "n"
+      CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "16384"
+      CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "32768"
+      CONFIG_ESP_MAIN_TASK_STACK_SIZE: "8192"
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+  # No serial console: UART0 is not broken out on this board and the USB PHY
+  # belongs to the mass-storage device. Logs still stream over the API.
+  hardware_uart: UART0
+  baud_rate: 0
+  level: INFO
+
+debug:
+  update_interval: 30s
+
+api:
+  encryption:
+    key: !secret api_key
+
+# The device can pull a firmware image hosted by Home Assistant and flash it
+# itself; this is the update entity shown in Home Assistant. `ota: esphome`
+# stays available for the ESPHome dashboard / CLI.
+http_request:
+  verify_ssl: false
+  timeout: 10s
+
+ota:
+  - platform: esphome
+  - platform: http_request
+    id: ota_http
+
+update:
+  - platform: http_request
+    id: firmware_update
+    name: "Firmware update"
+    device_class: firmware
+    ota_id: ota_http
+    source: !secret firmware_manifest_url
+    update_interval: 15min
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: light
+  ap:
+    ssid: "JC3248W535 Fallback"
+    password: !secret ap_password
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components: [jc3248_media]
+
+jc3248_media:
+  id: media
+  # HTTP upload page: http://<device>:8080/
+  upload_port: 8080
+  upload_username: !secret upload_username
+  upload_password: !secret upload_password
+  max_upload_mb: 64
+
+select:
+  - platform: jc3248_media
+    jc3248_media_id: media
+    name: "File"
+    icon: mdi:video
+
+  # Independent selector for deletion: choosing here does not start playback.
+  - platform: jc3248_media
+    jc3248_media_id: media
+    name: "File to delete"
+    icon: mdi:delete
+    play_on_select: false
+
+media_player:
+  - platform: jc3248_media
+    jc3248_media_id: media
+    name: "Player"
+    icon: mdi:play-circle
+
+switch:
+  - platform: jc3248_media
+    jc3248_media_id: media
+    name: "Sleep"
+    icon: mdi:sleep
+
+number:
+  - platform: jc3248_media
+    jc3248_media_id: media
+    name: "Brightness"
+    icon: mdi:brightness-6
+    initial_value: 100
+
+light:
+  - platform: jc3248_media
+    jc3248_media_id: media
+    name: "Screen colour"
+    icon: mdi:palette
+    # The fill has no dimmer hardware; a transition would only flood the
+    # command queue with intermediate colours.
+    default_transition_length: 0s
+    flash_transition_length: 0s
+    # Do not cover the browser with the last fill colour after a reboot.
+    restore_mode: ALWAYS_OFF
+
+sensor:
+  - platform: internal_temperature
+    name: "ESP temperature"
+    update_interval: 30s
+
+  - platform: template
+    name: "CPU load"
+    icon: mdi:cpu-64-bit
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    state_class: measurement
+    entity_category: diagnostic
+    update_interval: 10s
+    lambda: |-
+      return id(media).cpu_load();
+
+  - platform: debug
+    free:
+      name: "Free memory"
+    block:
+      name: "Largest memory block"
+    fragmentation:
+      name: "Memory fragmentation"
+    min_free:
+      name: "Minimum free memory"
+    loop_time:
+      name: "Loop time"
+    psram:
+      name: "Free PSRAM"
+    cpu_frequency:
+      name: "CPU frequency"
+
+  - platform: wifi_signal
+    name: "WiFi RSSI"
+    update_interval: 60s
+
+  - platform: uptime
+    name: "Uptime"
+    update_interval: 60s
+
+text_sensor:
+  - platform: template
+    name: "Now playing"
+    icon: mdi:filmstrip
+    update_interval: 1s
+    lambda: |-
+      return id(media).current_file();
+
+binary_sensor:
+  - platform: template
+    name: "Playing"
+    icon: mdi:play-circle
+    lambda: |-
+      return id(media).is_playing();
+
+button:
+  # The playback buttons are separate entities because Home Assistant's
+  # ESPHome integration filters NEXT_TRACK / PREVIOUS_TRACK out of the media
+  # player. English names keep their entity IDs stable and predictable.
+  - platform: template
+    name: "Play"
+    icon: mdi:play
+    on_press:
+      - lambda: id(media).play_selected();
+
+  - platform: template
+    name: "Stop"
+    icon: mdi:stop
+    on_press:
+      - lambda: id(media).stop();
+
+  - platform: template
+    name: "Previous"
+    icon: mdi:skip-previous
+    on_press:
+      - lambda: id(media).previous();
+
+  - platform: template
+    name: "Next"
+    icon: mdi:skip-next
+    on_press:
+      - lambda: id(media).next();
+
+  - platform: template
+    name: "Slideshow"
+    icon: mdi:playlist-play
+    on_press:
+      - lambda: id(media).start_slideshow();
+
+  - platform: template
+    name: "Refresh list"
+    icon: mdi:refresh
+    on_press:
+      - lambda: id(media).rescan();
+
+  - platform: template
+    name: "Delete file"
+    icon: mdi:delete
+    on_press:
+      - lambda: id(media).delete_selected();
+
+  - platform: template
+    name: "Show browser"
+    icon: mdi:folder
+    on_press:
+      - lambda: id(media).show_browser();
+
+  - platform: template
+    name: "Check for update"
+    icon: mdi:cloud-download
+    on_press:
+      - lambda: id(firmware_update).check();
+
+  # Reboots the ESP32 through the ESPHome restart action. Exposed in Home
+  # Assistant as a normal button so a stuck device can be restarted without
+  # pulling power, as long as its API is still responding.
+  - platform: restart
+    name: "Reboot"
+    icon: mdi:restart

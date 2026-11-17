@@ -1,0 +1,19 @@
+build/
+managed_components/
+sdkconfig
+sdkconfig.old
+.cache/
+*.orig
+*.rej
+.venv/
+.esphome/
+esphome/secrets.yaml
+esphome/dashboard_card.local.yaml
+esphome/.esphome/
+__pycache__/
+*.pyc
+esphome/build/
+
+# Local agent/OpenSpec scaffolding, not part of the published release
+.claude/
+.agents/

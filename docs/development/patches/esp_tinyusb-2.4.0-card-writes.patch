@@ -1,0 +1,53 @@
+--- a/tinyusb_msc.c
++++ b/tinyusb_msc.c
+@@ -307,7 +307,9 @@
+  *
+  * @param param Pointer to the storage object containing the write parameters.
+  */
+-static void tusb_write_func(void *param)
++// Kept for reference; WRITE10 now goes through msc_storage_write_sector()
++// synchronously (see tud_msc_write10_cb), so nothing schedules this.
++static void __attribute__((unused)) tusb_write_func(void *param)
+ {
+     assert(param); // Ensure storage is not NULL
+     msc_storage_obj_t *storage = (msc_storage_obj_t *)param;
+@@ -1397,7 +1399,13 @@
+         ESP_LOGE(TAG, "Buffer size %"PRIu32" exceeds maximum allowed size %d", bufsize, MSC_STORAGE_BUFFER_SIZE);
+         goto error;
+     }
+-    esp_err_t err = msc_storage_write_sector_deferred(lun, lba, offset, bufsize, buffer);
++    // Write through before acknowledging the command. The deferred path keeps
++    // the data in one shared buffer and lets the storage be handed back to the
++    // application while writes may still be queued; a phone that is unplugged
++    // right after a copy can then leave a half-written directory. The host
++    // waits for this command's status anyway, so doing the write here costs
++    // nothing in throughput and makes "copy finished" mean "on the card".
++    esp_err_t err = msc_storage_write_sector(lun, lba, offset, bufsize, buffer);
+     if (err != ESP_OK) {
+         ESP_LOGE(TAG, "WRITE(10) command failed, %s", esp_err_to_name(err));
+         goto error;
+--- a/storage_sdmmc.c
++++ b/storage_sdmmc.c
+@@ -60,6 +60,12 @@
+ {
+     assert(_scard);
+     uint32_t sector_size = storage_sdmmc_get_sector_size();
++    // SDMMC transfers whole sectors. The MSC endpoint buffer is larger than a
++    // sector, so every host transfer is sector-aligned; reject anything else
++    // instead of silently reading from the wrong offset.
++    ESP_RETURN_ON_FALSE(offset == 0 && size > 0 && (size % sector_size) == 0, ESP_ERR_INVALID_ARG,
++                        TAG, "unaligned read lba=%u offset=%u size=%u", (unsigned)lba,
++                        (unsigned)offset, (unsigned)size);
+     return sdmmc_read_sectors(_scard, dest, lba, size / sector_size);
+ }
+ 
+@@ -67,6 +73,9 @@
+ {
+     assert(_scard);
+     uint32_t sector_size = storage_sdmmc_get_sector_size();
++    ESP_RETURN_ON_FALSE(offset == 0 && size > 0 && (size % sector_size) == 0, ESP_ERR_INVALID_ARG,
++                        TAG, "unaligned write lba=%u offset=%u size=%u", (unsigned)lba,
++                        (unsigned)offset, (unsigned)size);
+     return sdmmc_write_sectors(_scard, src, lba, size / sector_size);
+ }
+ 

@@ -1,0 +1,89 @@
+# Compact Home Assistant card for the JC3248W535 player.
+# Paste this into a dashboard as a Manual card. Entity IDs match the English
+# entity names; adjust them if your installation generated different ones.
+type: vertical-stack
+cards:
+  - type: media-control
+    entity: media_player.guition_jc3248w535_3_5in_ips_player
+
+  - type: entities
+    entities:
+      - entity: select.guition_jc3248w535_3_5in_ips_file
+        name: File
+      - entity: sensor.guition_jc3248w535_3_5in_ips_now_playing
+        name: Now playing
+      - entity: switch.guition_jc3248w535_3_5in_ips_sleep
+        name: Sleep
+      - entity: number.guition_jc3248w535_3_5in_ips_brightness
+        name: Brightness
+
+  - type: grid
+    columns: 4
+    square: false
+    cards:
+      - type: button
+        name: Prev.
+        icon: mdi:skip-previous
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_previous
+
+      - type: button
+        name: Play
+        icon: mdi:play
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_play
+
+      - type: button
+        name: Stop
+        icon: mdi:stop
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_stop
+
+      - type: button
+        name: Next
+        icon: mdi:skip-next
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_next
+
+  - type: grid
+    columns: 3
+    square: false
+    cards:
+      - type: button
+        name: Slideshow
+        icon: mdi:playlist-play
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_slideshow
+
+      - type: button
+        name: Refresh
+        icon: mdi:refresh
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_refresh_list
+
+      - type: button
+        name: Browser
+        icon: mdi:folder
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_show_browser

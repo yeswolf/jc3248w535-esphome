@@ -1,0 +1,151 @@
+# Paste this into a Home Assistant dashboard as a Manual card.
+# Entity IDs are the ones created for this device; if your panel shows
+# different IDs, pick the matching entity in the UI.
+type: vertical-stack
+cards:
+  - type: entities
+    title: Guition JC3248W535
+    entities:
+      - entity: select.guition_jc3248w535_3_5in_ips_file
+        name: File
+      - entity: sensor.guition_jc3248w535_3_5in_ips_now_playing
+        name: Now playing
+      - entity: switch.guition_jc3248w535_3_5in_ips_sleep
+        name: Sleep
+      - entity: number.guition_jc3248w535_3_5in_ips_brightness
+        name: Brightness
+      - entity: light.guition_jc3248w535_3_5in_ips_screen_colour
+        name: Screen colour
+
+  - type: entities
+    title: Delete file
+    entities:
+      - entity: select.guition_jc3248w535_3_5in_ips_file_to_delete
+        name: File
+      - entity: button.guition_jc3248w535_3_5in_ips_delete_file
+        name: Delete selected file
+
+  - type: media-control
+    entity: media_player.guition_jc3248w535_3_5in_ips_player
+
+  - type: grid
+    columns: 4
+    square: false
+    cards:
+      - type: button
+        name: Prev.
+        icon: mdi:skip-previous
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_previous
+
+      - type: button
+        name: Play
+        icon: mdi:play
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_play
+
+      - type: button
+        name: Stop
+        icon: mdi:stop
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_stop
+
+      - type: button
+        name: Next
+        icon: mdi:skip-next
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_next
+
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: button
+        name: Slideshow
+        icon: mdi:playlist-play
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_slideshow
+
+      - type: button
+        name: Refresh list
+        icon: mdi:refresh
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_refresh_list
+
+      - type: button
+        name: Show browser
+        icon: mdi:folder
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_show_browser
+
+      - type: button
+        name: Check for update
+        icon: mdi:cloud-download
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_check_for_update
+
+      - type: button
+        name: Reboot
+        icon: mdi:restart
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.guition_jc3248w535_3_5in_ips_reboot
+
+  - type: entities
+    title: Diagnostics
+    entities:
+      - entity: sensor.guition_jc3248w535_3_5in_ips_esp_temperature
+        name: ESP temperature
+      - entity: sensor.guition_jc3248w535_3_5in_ips_cpu_load
+        name: CPU load
+      - entity: sensor.guition_jc3248w535_3_5in_ips_free_memory
+        name: Free memory
+      - entity: sensor.guition_jc3248w535_3_5in_ips_minimum_free_memory
+        name: Minimum free memory
+      - entity: sensor.guition_jc3248w535_3_5in_ips_largest_memory_block
+        name: Largest memory block
+      - entity: sensor.guition_jc3248w535_3_5in_ips_memory_fragmentation
+        name: Memory fragmentation
+      - entity: sensor.guition_jc3248w535_3_5in_ips_free_psram
+        name: Free PSRAM
+      - entity: sensor.guition_jc3248w535_3_5in_ips_loop_time
+        name: Loop time
+      - entity: sensor.guition_jc3248w535_3_5in_ips_cpu_frequency
+        name: CPU frequency
+      - entity: sensor.guition_jc3248w535_3_5in_ips_wifi_rssi
+        name: WiFi RSSI
+      - entity: sensor.guition_jc3248w535_3_5in_ips_uptime
+        name: Uptime
+
+  # Device logs only, no admin UI. If the browser blocks the iframe, open the
+  # same URL in a separate tab. 192.0.2.10 is a documentation address: replace
+  # it with the device IP.
+  - type: iframe
+    url: http://192.0.2.10:8080/logs
+    aspect_ratio: 65%
